@@ -8,7 +8,7 @@ local req = Proto("zwave_req_zw_version", name.." request")
 function req.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
 
-   local tree = root:add(req, tvbuf)
+   local tree = root:add(req, tvbuf:range())
 
    return tvbuf:len()
 end
