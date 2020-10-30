@@ -13,9 +13,14 @@ req.fields = {
 
 function req.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
+
+   local node_id = tvbuf(0, 1)
+
+   pinfo.cols.info:set("Request for node "..node_id:uint())
 
    local tree = root:add(req, tvbuf:range())
-   tree:add(field_node_id, tvbuf(0, 1))
+   tree:add(field_node_id, node_id)
 
    return tvbuf:len()
 end
@@ -79,6 +84,7 @@ resp.fields = {
 
 function resp.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
 
    local tree = root:add(resp, tvbuf:range())
    tree:add(field_listening, tvbuf(0, 1))
@@ -91,6 +97,8 @@ function resp.dissector(tvbuf, pinfo, root)
    tree:add(field_basic, tvbuf(3, 1))
    tree:add(field_generic, tvbuf(4, 1))
    tree:add(field_specific, tvbuf(5, 1))
+
+--   pinfo.cols.info:set(info)
 
    return tvbuf:len()
 end

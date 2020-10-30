@@ -36,10 +36,10 @@ local NAK = 0x15
 local CAN = 0x18
 
 local frame_type_values = {
-   [SOF] = "Start of frame",
+   [SOF] = "SOF",
    [ACK] = "ACK",
    [NAK] = "NAK",
-   [CAN] = "Can resend",
+   [CAN] = "CAN",
 }
 
 local field_frame_type = ProtoField.uint8("zwave_serial.frame_type", "Frame type", base.HEX, frame_type_values)
@@ -78,6 +78,18 @@ serial.fields = {
 }
 
 function serial.dissector(tvbuf, pinfo, root)
+   local host_to_chip = pinfo.p2p_dir == 0
+
+   if host_to_chip then
+      pinfo.cols.src:set("host")
+      pinfo.cols.dst:set("zw-chip")
+   else
+      pinfo.cols.src:set("zw-chip")
+      pinfo.cols.dst:set("host")
+   end
+
+   pinfo.cols.protocol:set("Serial API")
+
    -- FIXME: check tvbuf length
    local type = tvbuf(0, 1)
 
@@ -92,6 +104,7 @@ function serial.dissector(tvbuf, pinfo, root)
    tree:add(field_frame_type, type)
 
    if type:uint() ~= SOF then
+      pinfo.cols.info:set(frame_type_values[type:uint()])
       return
    end
 
@@ -106,8 +119,6 @@ function serial.dissector(tvbuf, pinfo, root)
    -- FIXME check tvbuf length
    local command_id = tvbuf(3, 1)
    local command_id_tree_item = tree:add(field_command_id, command_id)
-
-   local host_to_chip = pinfo.p2p_dir == 0
 
    local proto_table
    if host_to_chip and data_frame_type:uint() == REQ then

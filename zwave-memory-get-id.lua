@@ -7,8 +7,11 @@ local req = Proto("zwave_req_memorygetid", name.." request")
 
 function req.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
 
    local tree = root:add(req, tvbuf:range())
+
+   pinfo.cols.info:set("Request Home ID, Node ID from the chip")
 
    return tvbuf:len()
 end
@@ -31,10 +34,15 @@ resp.fields = {
 
 function resp.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
 
    local tree = root:add(resp, tvbuf:range())
-   tree:add(field_home_id, tvbuf(0, 4))
-   tree:add(field_node_id, tvbuf(4, 1))
+   local home_id = tvbuf(0, 4)
+   tree:add(field_home_id, home_id)
+   local node_id = tvbuf(4, 1)
+   tree:add(field_node_id, node_id)
+
+   pinfo.cols.info:set(string.format("Home ID=0x%x, Node ID=%d", home_id:uint(), node_id:uint()))
 
    return tvbuf:len()
 end

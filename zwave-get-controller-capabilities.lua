@@ -7,6 +7,8 @@ local req = Proto("zwave_req_zw_getcontrollercapabilities", name.." request")
 
 function req.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
+   pinfo.cols.info:set("Request capabilities of the controller")
 
    local tree = root:add(req, tvbuf:range())
 
@@ -36,28 +38,50 @@ local field_capabilities_real_primary = ProtoField.bool(
 local field_capabilities_suc = ProtoField.bool(
    "zwave.resp_zw_getcontrollercapabilities.suc", "SUC (static update controller)", 8, nil, 0x10)
 
-local field_unused = ProtoField.uint8(
-   "zwave.resp_zw_getcontrollercapabilities.unused", "Unused", base.HEX, nil, 0xe0)
-
 resp.fields = {
    field_capabilities_secondary,
    field_capabilities_on_other_network,
    field_capabilities_sis_present,
    field_capabilities_real_primary,
    field_capabilities_suc,
-   field_unused,
 }
 
 function resp.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
 
    local tree = root:add(resp, tvbuf:range())
-   tree:add(field_capabilities_secondary, tvbuf(0, 1))
-   tree:add(field_capabilities_on_other_network, tvbuf(0, 1))
-   tree:add(field_capabilities_sis_present, tvbuf(0, 1))
-   tree:add(field_capabilities_real_primary, tvbuf(0, 1))
-   tree:add(field_capabilities_suc, tvbuf(0, 1))
-   tree:add(field_unused, tvbuf(0, 1))
+   local caps = tvbuf(0, 1)
+   tree:add(field_capabilities_secondary, caps)
+   tree:add(field_capabilities_on_other_network, caps)
+   tree:add(field_capabilities_sis_present, caps)
+   tree:add(field_capabilities_real_primary, caps)
+   tree:add(field_capabilities_suc, caps)
+
+   local info = "Controller is "
+   if bit.band(caps:uint(), 0x01) == 0x01 then
+      info = info.."secondary"
+   else
+      info = info.."primary"
+   end
+
+   if bit.band(caps:uint(), 0x02) == 0x02 then
+      info = info..", not using built-in home ID"
+   end
+
+   if bit.band(caps:uint(), 0x04) == 0x04 then
+      info = info..", SUC"
+   end
+
+   if bit.band(caps:uint(), 0x08) == 0x08 then
+      info = info..", SIS present"
+   end
+
+   if bit.band(caps:uint(), 0x10) == 0x10 then
+      info = info..", real primary"
+   end
+
+   pinfo.cols.info:set(info)
 
    return tvbuf:len()
 end

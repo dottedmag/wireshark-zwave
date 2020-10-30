@@ -13,12 +13,19 @@ req.fields = {
 
 function req.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
 
    local tree = root:add(req, tvbuf:range())
 
+   local n
    if tvbuf:len() > 0 then
       tree:add(field_n, tvbuf(0, 1))
+      n = tvbuf(0, 1):uint()
+   else
+      n = 2
    end
+
+   pinfo.cols.info:set("Request "..n.." bytes of random data")
 
    return tvbuf:len()
 end
@@ -35,7 +42,7 @@ local field_success = ProtoField.bool("zwave.resp_getrandomword.succeeded", "Gen
 local field_n = ProtoField.uint8("zwave.resp_getrandomword.n", "Number of random bytes", base.DEC)
 local field_random = ProtoField.bytes("zwave.resp_getrandomword.data", "Random bytes", base.NONE)
 
-req.fields = {
+resp.fields = {
    field_success,
    field_n,
    field_random
@@ -43,11 +50,21 @@ req.fields = {
 
 function resp.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
 
    local tree = root:add(resp, tvbuf:range())
-   tree:add(field_success, tvbuf(0, 1))
-   tree:add(field_n, tvbuf(1, 1))
-   tree:add(field_random, tvbuf(2))
+   local success = tvbuf(0, 1)
+   tree:add(field_success, success)
+   local n = tvbuf(1, 1)
+   tree:add(field_n, n)
+   local random_data = tvbuf(2)
+   tree:add(field_random, random_data)
+
+   if success:uint() == 1 then
+      pinfo.cols.info:set("Retrieved "..n:uint().." bytes of random data")
+   else
+      pinfo.cols.info:set("Failed to obtain random data")
+   end
 
    return tvbuf:len()
 end

@@ -7,8 +7,11 @@ local req = Proto("zwave_req_nodelist", name.." request")
 
 function req.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
 
    local tree = root:add(req, tvbuf:range())
+
+   pinfo.cols.info:set("Request node list")
 
    return tvbuf:len()
 end
@@ -80,6 +83,7 @@ end
 
 function resp.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
 
    local tree = root:add(resp, tvbuf:range())
    tree:add(field_ver, tvbuf:range(0, 1))
@@ -93,9 +97,13 @@ function resp.dissector(tvbuf, pinfo, root)
 
    local nodes = tvbuf:range(3, len:uint())
    local tn = tree:add(field_nodes, nodes)
-   tn:append_text(": ["..table.concat(nodes_bitmask(nodes:bytes()), " ").."]")
+   local node_list = "["..table.concat(nodes_bitmask(nodes:bytes()), " ").."]"
+   tn:append_text(": "..node_list)
 
    tree:add(field_chip_type_ver, tvbuf:range(3+len:uint(), 2))
+
+   -- FIXME expose more info
+   pinfo.cols.info:set("Node list "..node_list)
 
    return tvbuf:len()
 end

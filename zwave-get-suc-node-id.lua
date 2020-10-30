@@ -7,8 +7,11 @@ local req = Proto("zwave_req_getsucnodeid", name.." request")
 
 function req.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
 
    local tree = root:add(req, tvbuf:range())
+
+   pinfo.cols.info:set("Request SUC/SIS node ID")
 
    return tvbuf:len()
 end
@@ -30,9 +33,13 @@ resp.fields = {
 
 function resp.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
 
    local tree = root:add(resp, tvbuf:range())
-   tree:add(field_node_id, tvbuf(0, 1))
+   local node_id = tvbuf(0, 1)
+   tree:add(field_node_id, node_id)
+
+   pinfo.cols.info:set("SUC/SIS node ID is "..node_id:uint())
 
    return tvbuf:len()
 end
