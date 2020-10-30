@@ -95,10 +95,55 @@ end
 
 local callback = Proto("zwave_callback_senddata", name.." callback")
 
+local OK = 0x00
+local NO_ACK = 0x01
+local FAIL = 0x02
+
+local field_func_id = ProtoField.uint8("zwave.callback_senddata.func_id", "Func ID (callback ID)", base.HEX)
+local field_tx_status = ProtoField.uint8(
+   "zwave.callback_senddata.tx_status", "Transmit status",
+   base.HEX, {[OK] = "OK", [NO_ACK] = "Not acknowledged before timeout", [FAIL] = "Failed (network busy)"})
+local field_tx_ticks = ProtoField.uint16(
+   "zwave.callback_senddata.tx_ticks", "Transmit time in ticks (10ms)", base.DEC)
+
+callback.fields = {
+   field_func_id,
+   field_tx_status,
+   field_tx_ticks,
+}
+
 function callback.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
 
    local tree = root:add(callback, tvbuf:range())
+
+   local func_id = tvbuf(0, 1)
+   tree:add(field_func_id, func_id)
+   local tx_status = tvbuf(1, 1)
+   tree:add(field_tx_status, tx_status)
+
+   local info
+   if tx_status:uint() == OK then
+      info = "Sent a frame"
+   elseif tx_status:uint() == NO_ACK then
+      info = "Sent a frame with no ack before timeout"
+   elseif tx_status:uint() == FAIL then
+      info = "Failed to send a frame due to busy network"
+   else
+      info = "???"
+   end
+
+   info = info..string.format(", callback ID 0x%x", func_id:uint())
+
+   if tvbuf:len() > 2 then
+      local tx_ticks = tvbuf(2, 2)
+      tree:add(field_tx_ticks, tx_ticks)
+
+      info = info..string.format(", tx time=%dms", 10*tx_ticks():uint())
+   end
+
+   pinfo.cols.info:set(info)
 
    return tvbuf:len()
 end

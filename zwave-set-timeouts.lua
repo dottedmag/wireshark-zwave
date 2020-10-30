@@ -17,6 +17,7 @@ req.fields = {
 
 function req.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
 
    local tree = root:add(req, tvbuf:range())
    tree:add(field_rx_ack_timeout, tvbuf(0, 1))
@@ -45,6 +46,7 @@ req.fields = {
 
 function resp.dissector(tvbuf, pinfo, root)
    pinfo.private.command_id = name
+   pinfo.cols.protocol:set(name)
 
    local tree = root:add(resp, tvbuf:range())
    tree:add(field_old_rx_ack_timeout, tvbuf(0, 1))

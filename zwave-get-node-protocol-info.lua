@@ -37,10 +37,6 @@ local field_listening = ProtoField.uint8(
    "zwave.resp_zw_getnodeprotocolinfo.listening", "Is node listening",
    base.HEX, {[0x00]= "No", [0x01] = "Yes"}, 0x80)
 
-local field_capability_proprietary = ProtoField.uint8(
-   "zwave.resp_zw_getnodeprotocolinfo.capability_proprietary", "Protocol-specific (proprietary) info",
-   base.HEX, nil, 0x7f)
-
 local field_optional_functionality = ProtoField.uint8(
    "zwave.resp_zw_getnodeprotocolinfo.optional_functionality", "Device supports functionality beyond the mandatory one",
    base.HEX, {[0x00] = "No", [0x01] = "Yes"}, 0x80)
@@ -53,13 +49,6 @@ local field_sensor_250ms = ProtoField.uint8(
    "zwave.resp_zw_getnodeprotocolinfo.listening_250ms", "Device is a 250ms FLiRS node",
    base.HEX, {[0x00] = "No", [0x01] = "Yes"}, 0x20)
 
-local field_security_proprietary = ProtoField.uint8(
-   "zwave.resp_zw_getnodeprotocolinfo.security_proprietary", "Protocol-specific (proprietary) info",
-   base.HEX, nil, 0x1f)
-
-local field_reserved = ProtoField.uint8(
-   "zwave.resp_zw_getnodeprotocolinfo.reserved", "Protocol-specific (proprietary) info", base.HEX)
-
 local field_basic = ProtoField.uint8(
    "zwave.resp_zw_getnodeprotocolinfo.basic_class", "Basic device class", base.HEX)
 
@@ -71,12 +60,9 @@ local field_specific = ProtoField.uint8(
 
 resp.fields = {
    field_listening,
-   field_capability_proprietary,
    field_optional_functionality,
    field_sensor_1000ms,
    field_sensor_250ms,
-   field_security_proprietary,
-   field_reserved,
    field_basic,
    field_generic,
    field_specific,
@@ -87,18 +73,36 @@ function resp.dissector(tvbuf, pinfo, root)
    pinfo.cols.protocol:set(name)
 
    local tree = root:add(resp, tvbuf:range())
-   tree:add(field_listening, tvbuf(0, 1))
-   tree:add(field_capability_proprietary, tvbuf(0, 1))
-   tree:add(field_optional_functionality, tvbuf(1, 1))
-   tree:add(field_sensor_1000ms, tvbuf(1, 1))
-   tree:add(field_sensor_250ms, tvbuf(1, 1))
-   tree:add(field_security_proprietary, tvbuf(1, 1))
-   tree:add(field_reserved, tvbuf(2, 1))
-   tree:add(field_basic, tvbuf(3, 1))
-   tree:add(field_generic, tvbuf(4, 1))
-   tree:add(field_specific, tvbuf(5, 1))
+   local listening = tvbuf(0, 1)
+   tree:add(field_listening, listening)
+   local caps = tvbuf(1, 1)
+   tree:add(field_optional_functionality, caps)
+   tree:add(field_sensor_1000ms, caps)
+   tree:add(field_sensor_250ms, caps)
+   local basic = tvbuf(3, 1)
+   tree:add(field_basic, basic)
+   local generic = tvbuf(4, 1)
+   tree:add(field_generic, generic)
+   local specific = tvbuf(5, 1)
+   tree:add(field_specific, specific)
 
---   pinfo.cols.info:set(info)
+   local info = {}
+   if bit.band(listening:uint(), 0x80) == 0x80 then
+      table.insert(info, "Listening")
+   end
+   if bit.band(caps:uint(), 0x80) == 0x80 then
+      table.insert(info, "Func+")
+   end
+   if bit.band(caps:uint(), 0x40) == 0x40 then
+      table.insert(info, "FLiRS 1000ms")
+   end
+   if bit.band(caps:uint(), 0x20) == 0x20 then
+      table.insert(info, "FLiRS 250ms")
+   end
+
+   pinfo.cols.info:set(string.format(
+                          "Node options: [%s], basic: 0x%x, generic: 0x%x, specific: 0x%x",
+                          table.concat(info, ", "), basic:uint(), generic:uint(), specific:uint()))
 
    return tvbuf:len()
 end
