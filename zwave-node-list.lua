@@ -1,4 +1,4 @@
-local command_id = 0x2
+local command_id = 0x02
 local name = "NodeList"
 
 -- Request
