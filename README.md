@@ -1,6 +1,6 @@
 # Z-Wave dissector for Wireshark
 
-Installation: `cd ~/.local/lib/wireshark/plugins; for i in $dissector; do ln -s $i .; done`
+Installation: `cd ~/.local/lib/wireshark/plugins && ln -s ${checkout_dir}`
 
 ## Status
 
